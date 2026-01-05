@@ -1,0 +1,36 @@
+service: secure-file-upload
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-central-1
+  environment:
+    BUCKET_NAME: s3-demo-bucket2026
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+          Resource:
+            - arn:aws:s3:::s3-demo-bucket2026/*
+
+functions:
+  generateUploadUrl:
+    handler: src/handlers/generateUploadUrl.handler
+    events:
+      - http:
+          path: upload-url
+          method: post
+
+  processUploadedFile:
+    handler: src/handlers/processUploadedFile.handler
+    events:
+      - s3:
+          bucket: s3-demo-bucket2026
+          event: s3:ObjectCreated:*
+          existing: true
+          rules:
+            - prefix: uploads/original/
