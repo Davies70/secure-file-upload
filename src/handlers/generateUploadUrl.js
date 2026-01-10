@@ -1,44 +1,78 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { s3 } from '../utils/s3Client.js';
 import crypto from 'crypto';
+import { s3 } from '../utils/s3Client.js';
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf']);
+
+function sanitizeFileName(name = 'upload') {
+  return name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+}
+
+function validateInput({ fileType, fileSize }) {
+  if (!ALLOWED_TYPES.has(fileType)) {
+    throw Object.assign(new Error('Unsupported file type'), {
+      statusCode: 400,
+      code: 'UNSUPPORTED_FILE_TYPE',
+    });
+  }
+
+  if (
+    typeof fileSize !== 'number' ||
+    fileSize <= 0 ||
+    fileSize > MAX_FILE_SIZE
+  ) {
+    throw Object.assign(new Error('Invalid file size'), {
+      statusCode: 400,
+      code: 'INVALID_FILE_SIZE',
+    });
+  }
+}
 
 export const handler = async (event) => {
   try {
-    let { fileName, fileType } = JSON.parse(event.body || '{}');
+    const body = JSON.parse(event.body || '{}');
+    const { fileName, fileType, fileSize } = body;
 
-    // Provide default filename if none is given
-    if (!fileName) {
-      const defaultName = 'upload';
-      const extension = fileType ? fileType.split('/')[1] : 'txt'; // derive extension from fileType if available
-      fileName = `${defaultName}.${extension}`;
-    }
+    validateInput({ fileType, fileSize });
 
-    if (!fileType) {
-      fileType = 'application/octet-stream'; // fallback generic binary type
-    }
+    const fileId = crypto.randomUUID();
+    const safeName = sanitizeFileName(fileName || 'upload');
 
-    const key = `uploads/original/${crypto.randomUUID()}-${fileName}`;
+    /**
+     * IMPORTANT:
+     * uploads/original/{fileId}/{filename}
+     */
+    const key = `uploads/original/${fileId}/${safeName}`;
 
     const command = new PutObjectCommand({
       Bucket: process.env.BUCKET_NAME,
       Key: key,
-      ContentType: fileType,
+      ContentType: fileType, // optional but OK
     });
 
     const uploadUrl = await getSignedUrl(s3, command, {
-      expiresIn: 60, // 1 minute
+      expiresIn: 360, // 6 minutes
     });
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ uploadUrl, key }),
+      body: JSON.stringify({
+        uploadUrl,
+        key,
+        fileId,
+      }),
     };
-  } catch (error) {
-    console.error('Error generating upload URL:', error);
+  } catch (err) {
+    console.error('Generate upload URL failed:', err);
+
     return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to generate upload URL' }),
+      statusCode: err.statusCode || 500,
+      body: JSON.stringify({
+        error: err.code || 'UPLOAD_URL_FAILED',
+        message: err.message || 'Failed to generate upload URL',
+      }),
     };
   }
 };

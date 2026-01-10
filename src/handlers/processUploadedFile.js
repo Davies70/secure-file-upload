@@ -2,75 +2,86 @@ import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { PDFDocument } from 'pdf-lib';
 import { s3 } from '../utils/s3Client.js';
+import streamToBuffer from '../utils/streamToBuffer.js';
 
-export const handler = async (event) => {
-  for (const record of event.Records) {
-    const bucket = record.s3.bucket.name;
-    const key = decodeURIComponent(record.s3.object.key);
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-    // Prevent infinite loop
-    if (!key.startsWith('uploads/original/')) return;
-
-    const extension = key.split('.').pop().toLowerCase();
-
-    const file = await s3.send(
-      new GetObjectCommand({ Bucket: bucket, Key: key })
-    );
-
-    const buffer = await streamToBuffer(file.Body);
-
-    if (['jpg', 'jpeg', 'png'].includes(extension)) {
-      await compressImage(bucket, key, buffer);
-    }
-
-    if (extension === 'pdf') {
-      await compressPdf(bucket, key, buffer);
-    }
-  }
-};
-
-async function compressImage(bucket, key, buffer) {
+async function processImage(buffer, fileId) {
   const optimized = await sharp(buffer)
     .resize({ width: 1200, withoutEnlargement: true })
     .webp({ quality: 80 })
     .toBuffer();
 
-  const newKey = key
-    .replace('uploads/original/', 'uploads/processed/images/')
-    .replace(/\.\w+$/, '.webp');
-
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: newKey,
-      Body: optimized,
-      ContentType: 'image/webp',
-    })
-  );
+  return {
+    buffer: optimized,
+    key: `uploads/processed/images/${fileId}.webp`,
+    contentType: 'image/webp',
+  };
 }
 
-async function compressPdf(bucket, key, buffer) {
+async function processPdf(buffer, fileId) {
   const pdf = await PDFDocument.load(buffer);
-
   const compressed = await pdf.save({
     useObjectStreams: true,
     compress: true,
   });
 
-  const newKey = key.replace('uploads/original/', 'uploads/processed/pdfs/');
-
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: newKey,
-      Body: compressed,
-      ContentType: 'application/pdf',
-    })
-  );
+  return {
+    buffer: compressed,
+    key: `uploads/processed/pdfs/${fileId}.pdf`,
+    contentType: 'application/pdf',
+  };
 }
 
-const streamToBuffer = async (stream) => {
-  const chunks = [];
-  for await (const chunk of stream) chunks.push(chunk);
-  return Buffer.concat(chunks);
+export const handler = async (event) => {
+  for (const record of event.Records) {
+    const bucket = record.s3.bucket.name;
+    const key = record.s3.object.key;
+
+    if (!key.startsWith('uploads/original/')) continue;
+
+    /**
+     * uploads/original/{fileId}/{filename}
+     */
+    const [, , fileId] = key.split('/');
+    if (!fileId) continue;
+
+    try {
+      const file = await s3.send(
+        new GetObjectCommand({ Bucket: bucket, Key: key })
+      );
+
+      if (file.ContentLength > MAX_FILE_SIZE) {
+        console.warn(`File too large, skipping: ${key}`);
+        continue;
+      }
+
+      const buffer = await streamToBuffer(file.Body);
+      const contentType = file.ContentType || '';
+
+      let result;
+
+      if (contentType.startsWith('image/')) {
+        result = await processImage(buffer, fileId);
+      } else if (contentType === 'application/pdf') {
+        result = await processPdf(buffer, fileId);
+      } else {
+        console.warn(`Unsupported content type: ${contentType}`);
+        continue;
+      }
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: result.key,
+          Body: result.buffer,
+          ContentType: result.contentType,
+        })
+      );
+
+      console.log(`Processed file written: ${result.key}`);
+    } catch (err) {
+      console.error(`Processing failed for ${key}`, err);
+    }
+  }
 };

@@ -34,3 +34,10 @@ functions:
           existing: true
           rules:
             - prefix: uploads/original/
+
+  getDownloadUrl:
+    handler: src/handlers/getDownloadUrl.handler
+    events:
+      - http:
+          path: download
+          method: get
