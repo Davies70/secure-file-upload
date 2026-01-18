@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import { PDFDocument } from 'pdf-lib';
 import { s3 } from '../utils/s3Client.js';
 import streamToBuffer from '../utils/streamToBuffer.js';
+import { updateFileStatus } from '../utils/dynamodbClient.js';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -48,7 +49,7 @@ export const handler = async (event) => {
 
     try {
       const file = await s3.send(
-        new GetObjectCommand({ Bucket: bucket, Key: key })
+        new GetObjectCommand({ Bucket: bucket, Key: key }),
       );
 
       if (file.ContentLength > MAX_FILE_SIZE) {
@@ -58,6 +59,7 @@ export const handler = async (event) => {
 
       const buffer = await streamToBuffer(file.Body);
       const contentType = file.ContentType || '';
+      const originalFileSize = file.ContentLength;
 
       let result;
 
@@ -76,12 +78,46 @@ export const handler = async (event) => {
           Key: result.key,
           Body: result.buffer,
           ContentType: result.contentType,
-        })
+        }),
       );
 
       console.log(`Processed file written: ${result.key}`);
+
+      // Calculate compression ratio
+      const compressedSize = result.buffer.length;
+      const compressionRatio = (
+        (1 - compressedSize / originalFileSize) *
+        100
+      ).toFixed(2);
+
+      // Update metadata status to COMPLETED
+      await updateFileStatus(fileId, {
+        status: 'COMPLETED',
+        metadata: {
+          processedKey: result.key,
+          contentType: result.contentType,
+          originalFileSize,
+          compressedFileSize: compressedSize,
+          compressionRatio: parseFloat(compressionRatio),
+          processedAt: new Date().toISOString(),
+        },
+      });
     } catch (err) {
       console.error(`Processing failed for ${key}`, err);
+
+      // Update metadata status to FAILED
+      await updateFileStatus(fileId, {
+        status: 'FAILED',
+        metadata: {
+          error: err.message,
+          failedAt: new Date().toISOString(),
+        },
+      }).catch((dbErr) => {
+        console.error(
+          `Failed to update metadata to FAILED for ${fileId}`,
+          dbErr,
+        );
+      });
     }
   }
 };

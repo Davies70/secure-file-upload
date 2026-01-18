@@ -7,6 +7,7 @@ provider:
   region: eu-central-1
   environment:
     BUCKET_NAME: s3-demo-bucket2026
+    METADATA_TABLE: file-metadata-${sls:stage}
   iam:
     role:
       statements:
@@ -16,6 +17,12 @@ provider:
             - s3:PutObject
           Resource:
             - arn:aws:s3:::s3-demo-bucket2026/*
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:GetItem
+          Resource: !GetAtt FileMetadataTable.Arn
 
 functions:
   generateUploadUrl:
@@ -24,6 +31,13 @@ functions:
       - http:
           path: upload-url
           method: post
+          cors:
+            origins:
+              - 'http://localhost:3000'
+            headers:
+              - 'Content-Type'
+              - 'Authorization'
+            allowCredentials: true
 
   processUploadedFile:
     handler: src/handlers/processUploadedFile.handler
@@ -41,3 +55,41 @@ functions:
       - http:
           path: download
           method: get
+          cors:
+            origins:
+              - 'http://localhost:3000'
+            headers:
+              - 'Content-Type'
+              - 'Authorization'
+            allowCredentials: true
+
+  getFileMetadata:
+    handler: src/handlers/getFileMetadata.handler
+    events:
+      - http:
+          path: file-metadata
+          method: get
+          cors:
+            origins:
+              - 'http://localhost:3000'
+            headers:
+              - 'Content-Type'
+              - 'Authorization'
+            allowCredentials: true
+
+resources:
+  Resources:
+    FileMetadataTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: file-metadata-${sls:stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: fileId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: fileId
+            KeyType: HASH
+        TimeToLiveSpecification:
+          AttributeName: expiresAt
+          Enabled: true

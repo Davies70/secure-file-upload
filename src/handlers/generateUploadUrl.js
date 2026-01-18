@@ -2,6 +2,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
 import { s3 } from '../utils/s3Client.js';
+import { createFileMetadata } from '../utils/dynamodbClient.js';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf']);
@@ -56,8 +57,15 @@ export const handler = async (event) => {
       expiresIn: 360, // 6 minutes
     });
 
+    // Create metadata record in DynamoDB
+    await createFileMetadata(fileId, { fileType, fileSize, fileName });
+
     return {
       statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         uploadUrl,
         key,
@@ -69,6 +77,10 @@ export const handler = async (event) => {
 
     return {
       statusCode: err.statusCode || 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         error: err.code || 'UPLOAD_URL_FAILED',
         message: err.message || 'Failed to generate upload URL',

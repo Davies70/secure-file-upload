@@ -9,6 +9,10 @@ export const handler = async (event) => {
     if (!key) {
       return {
         statusCode: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ error: 'File key required' }),
       };
     }
@@ -16,6 +20,10 @@ export const handler = async (event) => {
     if (!key.startsWith('uploads/processed/')) {
       return {
         statusCode: 403,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ error: 'Invalid file path' }),
       };
     }
@@ -32,12 +40,20 @@ export const handler = async (event) => {
 
     return {
       statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ downloadUrl: url }),
     };
   } catch (err) {
     console.error('Download URL failed:', err);
     return {
       statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ error: 'DOWNLOAD_URL_FAILED' }),
     };
   }
