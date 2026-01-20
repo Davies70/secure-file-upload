@@ -10,7 +10,8 @@ export const handler = async (event) => {
       return {
         statusCode: 400,
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin':
+            'https://secure-file-processing-ui.vercel.app/',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ error: 'File key required' }),
@@ -35,13 +36,14 @@ export const handler = async (event) => {
         Key: key,
         ResponseContentDisposition: 'attachment',
       }),
-      { expiresIn: 300 }
+      { expiresIn: 300 },
     );
 
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin':
+          'https://secure-file-processing-ui.vercel.app',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ downloadUrl: url }),
@@ -51,7 +53,8 @@ export const handler = async (event) => {
     return {
       statusCode: 500,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin':
+          'https://secure-file-processing-ui.vercel.app',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ error: 'DOWNLOAD_URL_FAILED' }),

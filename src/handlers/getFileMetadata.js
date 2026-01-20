@@ -8,7 +8,8 @@ export const handler = async (event) => {
       return {
         statusCode: 400,
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin':
+            'https://secure-file-processing-ui.vercel.app/',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ error: 'File ID required' }),
@@ -21,7 +22,8 @@ export const handler = async (event) => {
       return {
         statusCode: 404,
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin':
+            'https://secure-file-processing-ui.vercel.app/',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ error: 'File metadata not found' }),
@@ -34,7 +36,8 @@ export const handler = async (event) => {
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin':
+          'https://secure-file-processing-ui.vercel.app',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(responseData),
@@ -44,7 +47,8 @@ export const handler = async (event) => {
     return {
       statusCode: 500,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin':
+          'https://secure-file-processing-ui.vercel.app',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ error: 'GET_METADATA_FAILED' }),

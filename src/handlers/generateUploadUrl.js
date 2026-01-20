@@ -63,7 +63,8 @@ export const handler = async (event) => {
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin':
+          'https://secure-file-processing-ui.vercel.app',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -78,7 +79,8 @@ export const handler = async (event) => {
     return {
       statusCode: err.statusCode || 500,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin':
+          'https://secure-file-processing-ui.vercel.app',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

@@ -33,7 +33,7 @@ functions:
           method: post
           cors:
             origins:
-              - 'http://localhost:3000'
+              - 'https://secure-file-processing-ui.vercel.app'
             headers:
               - 'Content-Type'
               - 'Authorization'
@@ -57,7 +57,7 @@ functions:
           method: get
           cors:
             origins:
-              - 'http://localhost:3000'
+              - 'https://secure-file-processing-ui.vercel.app'
             headers:
               - 'Content-Type'
               - 'Authorization'
@@ -71,7 +71,7 @@ functions:
           method: get
           cors:
             origins:
-              - 'http://localhost:3000'
+              - 'https://secure-file-processing-ui.vercel.app'
             headers:
               - 'Content-Type'
               - 'Authorization'
