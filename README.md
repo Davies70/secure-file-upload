@@ -65,7 +65,8 @@ endpoints:
 
 A companion frontend application provides a user interface for interacting with this API:
 
-- **Frontend Repository**: [Secure File Processing UI](https://github.com/Davies70/secure-file-processing-ui) _(placeholder)_
+- **Frontend Deployment**: [Secure File Processing UI](https://secure-file-processing-ui.vercel.app/)
+- **Frontend Repository**: [GitHub](https://github.com/Davies70/secure-file-processing-ui)
 
 The frontend handles:
 
