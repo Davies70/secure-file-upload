@@ -20,6 +20,30 @@ async function processImage(buffer, fileId) {
   };
 }
 
+// async function processImage(buffer, fileId) {
+//   const image = sharp(buffer).resize({
+//     width: 1200,
+//     withoutEnlargement: true,
+//   });
+
+//   let optimized;
+//   let key;
+//   let contentType;
+
+//   try {
+//     optimized = await image.avif({ quality: 50 }).toBuffer();
+//     key = `uploads/processed/images/${fileId}.avif`;
+//     contentType = 'image/avif';
+//   } catch {
+//     optimized = await image.webp({ quality: 80 }).toBuffer();
+//     key = `uploads/processed/images/${fileId}.webp`;
+//     contentType = 'image/webp';
+//   }
+
+//   return { buffer: optimized, key, contentType };
+// }
+
+
 async function processPdf(buffer, fileId) {
   const pdf = await PDFDocument.load(buffer);
   const compressed = await pdf.save({

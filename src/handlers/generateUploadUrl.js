@@ -4,6 +4,20 @@ import crypto from 'crypto';
 import { s3 } from '../utils/s3Client.js';
 import { createFileMetadata } from '../utils/dynamodbClient.js';
 
+const ALLOWED_CORS_ORIGINS = new Set([
+  'https://secure-file-processing-ui.vercel.app',
+  'http://localhost:3000',
+]);
+
+function resolveCorsOrigin(event) {
+  const origin = event?.headers?.origin || event?.headers?.Origin;
+  if (!origin) return 'https://secure-file-processing-ui.vercel.app';
+  const cleaned = origin.replace(/\/$/, '');
+  return ALLOWED_CORS_ORIGINS.has(cleaned)
+    ? cleaned
+    : 'https://secure-file-processing-ui.vercel.app';
+}
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf']);
 
@@ -63,8 +77,7 @@ export const handler = async (event) => {
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin':
-          'https://secure-file-processing-ui.vercel.app',
+        'Access-Control-Allow-Origin': resolveCorsOrigin(event),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -79,8 +92,7 @@ export const handler = async (event) => {
     return {
       statusCode: err.statusCode || 500,
       headers: {
-        'Access-Control-Allow-Origin':
-          'https://secure-file-processing-ui.vercel.app',
+        'Access-Control-Allow-Origin': resolveCorsOrigin(event),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

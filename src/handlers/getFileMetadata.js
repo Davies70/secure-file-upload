@@ -1,5 +1,19 @@
 import { getFileMetadata } from '../utils/dynamodbClient.js';
 
+const ALLOWED_CORS_ORIGINS = new Set([
+  'https://secure-file-processing-ui.vercel.app',
+  'http://localhost:3000',
+]);
+
+function resolveCorsOrigin(event) {
+  const origin = event?.headers?.origin || event?.headers?.Origin;
+  if (!origin) return 'https://secure-file-processing-ui.vercel.app';
+  const cleaned = origin.replace(/\/$/, '');
+  return ALLOWED_CORS_ORIGINS.has(cleaned)
+    ? cleaned
+    : 'https://secure-file-processing-ui.vercel.app';
+}
+
 export const handler = async (event) => {
   try {
     const { fileId } = event.queryStringParameters || {};
@@ -8,8 +22,7 @@ export const handler = async (event) => {
       return {
         statusCode: 400,
         headers: {
-          'Access-Control-Allow-Origin':
-            'https://secure-file-processing-ui.vercel.app/',
+          'Access-Control-Allow-Origin': resolveCorsOrigin(event),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ error: 'File ID required' }),
@@ -22,8 +35,7 @@ export const handler = async (event) => {
       return {
         statusCode: 404,
         headers: {
-          'Access-Control-Allow-Origin':
-            'https://secure-file-processing-ui.vercel.app/',
+          'Access-Control-Allow-Origin': resolveCorsOrigin(event),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ error: 'File metadata not found' }),
@@ -36,8 +48,7 @@ export const handler = async (event) => {
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin':
-          'https://secure-file-processing-ui.vercel.app',
+        'Access-Control-Allow-Origin': resolveCorsOrigin(event),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(responseData),
@@ -47,8 +58,7 @@ export const handler = async (event) => {
     return {
       statusCode: 500,
       headers: {
-        'Access-Control-Allow-Origin':
-          'https://secure-file-processing-ui.vercel.app',
+        'Access-Control-Allow-Origin': resolveCorsOrigin(event),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ error: 'GET_METADATA_FAILED' }),

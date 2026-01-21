@@ -2,6 +2,20 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3 } from '../utils/s3Client.js';
 
+const ALLOWED_CORS_ORIGINS = new Set([
+  'https://secure-file-processing-ui.vercel.app',
+  'http://localhost:3000',
+]);
+
+function resolveCorsOrigin(event) {
+  const origin = event?.headers?.origin || event?.headers?.Origin;
+  if (!origin) return 'https://secure-file-processing-ui.vercel.app';
+  const cleaned = origin.replace(/\/$/, '');
+  return ALLOWED_CORS_ORIGINS.has(cleaned)
+    ? cleaned
+    : 'https://secure-file-processing-ui.vercel.app';
+}
+
 export const handler = async (event) => {
   try {
     const { key } = event.queryStringParameters || {};
@@ -10,8 +24,7 @@ export const handler = async (event) => {
       return {
         statusCode: 400,
         headers: {
-          'Access-Control-Allow-Origin':
-            'https://secure-file-processing-ui.vercel.app/',
+          'Access-Control-Allow-Origin': resolveCorsOrigin(event),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ error: 'File key required' }),
@@ -22,7 +35,7 @@ export const handler = async (event) => {
       return {
         statusCode: 403,
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': resolveCorsOrigin(event),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ error: 'Invalid file path' }),
@@ -42,8 +55,7 @@ export const handler = async (event) => {
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin':
-          'https://secure-file-processing-ui.vercel.app',
+        'Access-Control-Allow-Origin': resolveCorsOrigin(event),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ downloadUrl: url }),
@@ -53,8 +65,7 @@ export const handler = async (event) => {
     return {
       statusCode: 500,
       headers: {
-        'Access-Control-Allow-Origin':
-          'https://secure-file-processing-ui.vercel.app',
+        'Access-Control-Allow-Origin': resolveCorsOrigin(event),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ error: 'DOWNLOAD_URL_FAILED' }),
